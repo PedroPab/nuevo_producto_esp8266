@@ -2,6 +2,10 @@
 #include <ESP8266WebServer.h>
 #include <EEPROM.h>
 
+#define button D4
+#define led LED_BUILTIN
+
+
 const char *ssid_AP = "Virus_Gratis";
 const char *password_AP = "12345678";
 String password_wifi ;
@@ -13,11 +17,17 @@ String ssid_eeprom;
 ESP8266WebServer server(80);
 
 void setup() {
+  pinMode(led, OUTPUT);     // Initialize the LED_BUILTIN pin as an output
+  pinMode(button , INPUT_PULLUP);
+
   Serial.begin(115200);
   EEPROM.begin(512);
 
+  resetMemory();
+
   delay(10);
-  Serial.println();
+
+
 
   WiFi.mode(WIFI_AP);
   WiFi.softAP(ssid_AP, password_AP);
@@ -44,10 +54,13 @@ void setup() {
 void loop() {
   Serial.println("{------");
   Serial.println();
-  EEPROM.get(0, password_eeprom);
-  EEPROM.get(100, ssid_eeprom);
-  Serial.println(password_eeprom);
+  
+  EEPROM.get(0, ssid_eeprom);
+  EEPROM.get(100, password_eeprom);
+
   Serial.println(ssid_eeprom);
+  Serial.println(password_eeprom);
+
   Serial.println("-------}");
 
   if (ssid_eeprom != "hola" ) {
@@ -76,12 +89,18 @@ void handleLogin() {                         // If a POST request is made to URI
   ssid_wifi = String(server.arg("WiFi_SSID"));
   password_wifi = String(server.arg("password"));
 
-  EEPROM.put(0, password_wifi);
-  EEPROM.put(100, ssid_wifi);
-  Serial.println("guardado ");
+  EEPROM.put(0, ssid_wifi);
   Serial.println(EEPROM.commit());//hay que poner un commit para que se guarde
-  Serial.println(server.arg("WiFi_SSID"));
-  Serial.println(server.arg("password"));
+  EEPROM.put(100, password_wifi);
+  
+  Serial.println(EEPROM.commit());
+
+
+  
+
+  Serial.println("guardado ");
+  //Serial.println(server.arg("WiFi_SSID"));
+  //Serial.println(server.arg("password"));
 
   server.send(201, "text/plain", "todo melo");
 
@@ -93,4 +112,44 @@ void handleLogin() {                         // If a POST request is made to URI
 }
 void handleNotFound() {
   server.send(404, "text/plain", "404: Not found"); // Send HTTP status 404 (Not Found) when there's no handler for the URI in the request
+}
+
+void resetMemory() {
+  EEPROM.begin(512);
+  Serial.println();
+  Serial.println("aueires borra la memoria?");
+  Serial.println(digitalRead(button));
+  digitalWrite(led, HIGH);
+  delay(1000);
+
+  if (digitalRead(button) == LOW) {
+    delay(3000);
+    Serial.println("SI, ha bueno ;)");
+
+    if (digitalRead(button) == LOW) {
+      Serial.println("Se esta borrando ");
+      for (int i = 0; i < 512; i++) {
+        EEPROM.write(i, 0);
+      }
+      digitalWrite(led, HIGH);
+      delay(100);
+      digitalWrite(led, LOW);
+      delay(100);
+      digitalWrite(led, HIGH);
+      delay(100);
+      digitalWrite(led, LOW);
+      EEPROM.end();
+
+      Serial.println("Se borro la memoria con exito ");
+      Serial.println(EEPROM.commit());
+      delay(5000);
+      //      for (int i = 0; i < 512; i++) {
+      //
+      //        Serial.println(EEPROM.read(i));
+      //      }
+
+    }
+  }
+  //EEPROM.end();
+
 }
