@@ -14,6 +14,8 @@ String ssid_wifi;
 String password_eeprom;
 String ssid_eeprom;
 
+boolean  starts = false;
+
 ESP8266WebServer server(80);
 
 void setup() {
@@ -23,9 +25,9 @@ void setup() {
   Serial.begin(115200);
   EEPROM.begin(512);
 
+  delay(1000);
   resetMemory();
 
-  delay(10);
 
 
 
@@ -54,7 +56,7 @@ void setup() {
 void loop() {
   Serial.println("{------");
   Serial.println();
-  
+
   EEPROM.get(0, ssid_eeprom);
   EEPROM.get(100, password_eeprom);
 
@@ -63,17 +65,34 @@ void loop() {
 
   Serial.println("-------}");
 
-  if (ssid_eeprom != "hola" ) {
+  if (ssid_eeprom == "") {
     server.handleClient();
     Serial.println(" wifi no guardado");
 
-  } else  {
+  }  else if ( ssid_eeprom)  {
+
+    Serial.println(" wifi apagada");
+    WiFi.softAPdisconnect();
+    WiFi.mode(WIFI_AP);
+    WiFi.begin(ssid_eeprom, password_eeprom);
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+    }
+    WiFi.setAutoReconnect(true);
+    Serial.println("WiFi conectada.");
+    Serial.println();
+    WiFi.printDiag(Serial);
+    Serial.println();
+    Serial.print("STA dirección IP: ");
+    Serial.println(WiFi.localIP());
+    return; 
 
   }
 
 
 
-  delay(100);
+  delay(1000);
 }
 
 void handleRoot() {                          // When URI / is requested, send a web page with a button to toggle the LED
@@ -92,11 +111,11 @@ void handleLogin() {                         // If a POST request is made to URI
   EEPROM.put(0, ssid_wifi);
   Serial.println(EEPROM.commit());//hay que poner un commit para que se guarde
   EEPROM.put(100, password_wifi);
-  
+
   Serial.println(EEPROM.commit());
 
 
-  
+
 
   Serial.println("guardado ");
   //Serial.println(server.arg("WiFi_SSID"));
@@ -138,7 +157,7 @@ void resetMemory() {
       digitalWrite(led, HIGH);
       delay(100);
       digitalWrite(led, LOW);
-      EEPROM.end();
+      //EEPROM.end();
 
       Serial.println("Se borro la memoria con exito ");
       Serial.println(EEPROM.commit());
