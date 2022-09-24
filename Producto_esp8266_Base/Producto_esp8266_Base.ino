@@ -8,6 +8,7 @@
 
 const char *ssid_AP = "Virus_Gratis";
 const char *password_AP = "12345678";
+
 String password_wifi ;
 String ssid_wifi;
 
@@ -21,25 +22,22 @@ ESP8266WebServer server(80);
 void setup() {
   pinMode(led, OUTPUT);     // Initialize the LED_BUILTIN pin as an output
   pinMode(button , INPUT_PULLUP);
-
-  Serial.begin(115200);
   EEPROM.begin(512);
+  delay(250);
+  Serial.begin(115200);
+
 
   delay(1000);
   resetMemory();
 
 
-
-
   WiFi.mode(WIFI_AP);
   WiFi.softAP(ssid_AP, password_AP);
 
-  Serial.println("WiFi conectada.");
-
+  Serial.println("red iniciada");
   Serial.println();
   WiFi.printDiag(Serial);
   Serial.println();
-
   Serial.print("AP dirección IP: ");
   Serial.println(WiFi.softAPIP());
 
@@ -50,15 +48,15 @@ void setup() {
   server.on("/login", HTTP_POST, handleLogin); // Call the 'handleLogin' function when a POST request is made to URI "/login"
   server.begin();
 
-  Serial.println("Servidor inicializado.");
-
 }
 void loop() {
+  EEPROM.begin(512);
+
   Serial.println("{------");
   Serial.println();
 
-  EEPROM.get(0, ssid_eeprom);
-  EEPROM.get(100, password_eeprom);
+  ssid_eeprom = readStringFromEEPROM(0);
+  password_eeprom = readStringFromEEPROM(255);
 
   Serial.println(ssid_eeprom);
   Serial.println(password_eeprom);
@@ -67,13 +65,13 @@ void loop() {
 
   if (ssid_eeprom == "") {
     server.handleClient();
-    Serial.println(" wifi no guardado");
+    Serial.println(" Credenciales  no guardadas");
 
-  }  else if ( ssid_eeprom)  {
+  }  else {
 
     Serial.println(" wifi apagada");
     WiFi.softAPdisconnect();
-    WiFi.mode(WIFI_AP);
+    WiFi.mode(WIFI_STA);
     WiFi.begin(ssid_eeprom, password_eeprom);
     while (WiFi.status() != WL_CONNECTED) {
       delay(500);
@@ -86,7 +84,8 @@ void loop() {
     Serial.println();
     Serial.print("STA dirección IP: ");
     Serial.println(WiFi.localIP());
-    return; 
+    delay(5000);
+    return;
 
   }
 
@@ -96,7 +95,7 @@ void loop() {
 }
 
 void handleRoot() {                          // When URI / is requested, send a web page with a button to toggle the LED
-  server.send(200, "text/html", "<form action=\"/login\" method=\"POST\"><input type=\"text\" name=\"WiFi_SSID\" placeholder=\"WiFi_SSID\"></br><input type=\"password\" name=\"password\" placeholder=\"Password\"></br><input type=\"submit\" value=\"Login\"></form><p>Try 'John Doe' and 'password123' ...</p>");
+  server.send(200, "text/html", "<form action=\"/login\" method=\"POST\"><input type=\"text\" name=\"WiFi_SSID\" placeholder=\"Username\"></br><input type=\"password\" name=\"password\" placeholder=\"Password\"></br><input type=\"submit\" value=\"Login\"></form><p>Try 'John Doe' and 'password123' ...</p>");
 }
 
 void handleLogin() {                         // If a POST request is made to URI /login
@@ -108,29 +107,44 @@ void handleLogin() {                         // If a POST request is made to URI
   ssid_wifi = String(server.arg("WiFi_SSID"));
   password_wifi = String(server.arg("password"));
 
-  EEPROM.put(0, ssid_wifi);
-  Serial.println(EEPROM.commit());//hay que poner un commit para que se guarde
-  EEPROM.put(100, password_wifi);
-
-  Serial.println(EEPROM.commit());
+  StringToEEPROM(0, ssid_wifi);
+  StringToEEPROM(255, password_wifi);
 
 
+  //  if (EEPROM.commit()) {
+  //    Serial.println("datos guardados");
+  //  } else {
+  //    Serial.println("error en la memoria, no se pudo guardar los datos");
+  //
+  //  }
 
 
-  Serial.println("guardado ");
-  //Serial.println(server.arg("WiFi_SSID"));
-  //Serial.println(server.arg("password"));
 
   server.send(201, "text/plain", "todo melo");
 
-  //  if (server.arg("WiFi_SSID") == "John Doe" && server.arg("password") == "password123") { // If both the WiFi_SSID and the password are correct
-  //    server.send(200, "text/html", "<h1>Welcome, " + server.arg("WiFi_SSID") + "!</h1><p>Login successful</p>");
-  //  } else {                                                                              // WiFi_SSID and password don't match
-  //    server.send(401, "text/plain", "401: Unauthorized");
-  //  }
 }
+
 void handleNotFound() {
   server.send(404, "text/plain", "404: Not found"); // Send HTTP status 404 (Not Found) when there's no handler for the URI in the request
+}
+
+void StringToEEPROM(int offset, const String &str) {
+  byte len = str.length();
+  EEPROM.write(offset, len);
+  for (int i = 0; i < len; i++) {
+    EEPROM.write(offset + i + 1, str[i]);
+    EEPROM.commit();
+  }
+}
+
+String readStringFromEEPROM(int offset) {
+  int len = EEPROM.read(offset);
+  int i;
+  char data[len + 1];
+  for (i = 0; i < len; i++)
+    data[i] = EEPROM.read(offset + i + 1);
+  data[i] = 0;
+  return String(data);
 }
 
 void resetMemory() {
