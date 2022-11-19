@@ -5,51 +5,53 @@
 #define button D4
 #define led LED_BUILTIN
 
-
+//Es el nombre y la contraseña de la nueva red Wifi
 const char *ssid_AP = "Virus_Gratis";
 const char *password_AP = "12345678";
 
-String password_wifi ;
+//inicialisamos las variables para ser usadas con la blibloteca EEPROM
+String password_wifi;
 String ssid_wifi;
 
 String password_eeprom;
 String ssid_eeprom;
 
-boolean  starts = false;
+boolean starts = false;
 
+unsigned long tiempo_espera = 15000;  //nuestro tiempo maximo de espera para conectarnos al wifi en milis
+
+//Establecemos el puerto 80
 ESP8266WebServer server(80);
 
 void setup() {
-  pinMode(led, OUTPUT);     // Initialize the LED_BUILTIN pin as an output
-  pinMode(button , INPUT_PULLUP);
-  EEPROM.begin(512);
-  delay(250);
-  Serial.begin(115200);
 
-
-  delay(1000);
+  Serial.begin(9600);
   resetMemory();
 
-
+  //iniciamos el modo SoftAP
   WiFi.mode(WIFI_AP);
+  //establecemos el nombre y contraseña
   WiFi.softAP(ssid_AP, password_AP);
 
-  Serial.println("red iniciada");
-  Serial.println();
+  //imprimimos datos
+  Serial.println("punto de acceso iniciada");
   WiFi.printDiag(Serial);
-  Serial.println();
   Serial.print("AP dirección IP: ");
   Serial.println(WiFi.softAPIP());
+  Serial.println("");
 
+  //establecmos las peticiones como en express
   server.on("/", []() {
     server.send(200, "text/plain", "Hola mundo!!");
   });
-  server.on("/hola", HTTP_GET, handleRoot);        // Call the 'handleRoot' function when a client requests URI "/"
-  server.on("/login", HTTP_POST, handleLogin); // Call the 'handleLogin' function when a POST request is made to URI "/login"
-  server.begin();
+  server.on("/hola", HTTP_GET, handleRoot);     //el formulario para  ingresar datos, el tercer parametro es la funcino que se ejecutara al ingresar a esa direccion
+  server.on("/login", HTTP_POST, handleLogin);  //se manda el formulario con ayuda del navegador y html a esta direccion
 
+  server.begin();  //iniciamos el servidor
 }
+
 void loop() {
+
   EEPROM.begin(512);
 
   Serial.println("{------");
@@ -64,29 +66,39 @@ void loop() {
   Serial.println("-------}");
 
   if (ssid_eeprom == "") {
-    server.handleClient();
+    server.handleClient();  //escucha las solicitudes http de los clientes
     Serial.println(" Credenciales  no guardadas");
 
-  }  else {
+  } else {
 
-    Serial.println(" wifi apagada");
-    WiFi.softAPdisconnect();
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid_eeprom, password_eeprom);
+    Serial.println("punto de acceso apagada");
+    WiFi.softAPdisconnect();  //apagamos el punto de acceso
+
+    WiFi.mode(WIFI_STA);                       //iniciamos el modo estacion
+    WiFi.begin(ssid_eeprom, password_eeprom);  //nos conectamos con la contrasña guardad de la memoria EEPROM
+
+    unsigned long contadorIntentos = millis();
     while (WiFi.status() != WL_CONNECTED) {
       delay(500);
       Serial.print(".");
+      contadorIntentos++;
+      if (contadorIntentos > millis() + tiempo_espera) {
+        Serial.print("tiempo maximo transcurrido");
+
+        return ;
+      }
     }
+
     WiFi.setAutoReconnect(true);
     Serial.println("WiFi conectada.");
-    Serial.println();
     WiFi.printDiag(Serial);
-    Serial.println();
+    Serial.println("");
     Serial.print("STA dirección IP: ");
     Serial.println(WiFi.localIP());
+        Serial.print("podemos ejecutar fuciones para nuestro producto");
+
     delay(5000);
     return;
-
   }
 
 
@@ -94,14 +106,14 @@ void loop() {
   delay(1000);
 }
 
-void handleRoot() {                          // When URI / is requested, send a web page with a button to toggle the LED
+void handleRoot() {  // When URI / is requested, send a web page with a button to toggle the LED
   server.send(200, "text/html", "<form action=\"/login\" method=\"POST\"><input type=\"text\" name=\"WiFi_SSID\" placeholder=\"Username\"></br><input type=\"password\" name=\"password\" placeholder=\"Password\"></br><input type=\"submit\" value=\"Login\"></form><p>Try 'John Doe' and 'password123' ...</p>");
 }
 
-void handleLogin() {                         // If a POST request is made to URI /login
-  if ( ! server.hasArg("WiFi_SSID") || ! server.hasArg("password")
-       || server.arg("WiFi_SSID") == NULL ) { // If the POST request doesn't have WiFi_SSID and password data
-    server.send(400, "text/plain", "400: Invalid Request");         // The request is invalid, so send HTTP status 400
+void handleLogin() {  // If a POST request is made to URI /login
+  if (!server.hasArg("WiFi_SSID") || !server.hasArg("password")
+      || server.arg("WiFi_SSID") == NULL) {                  // If the POST request doesn't have WiFi_SSID and password data
+    server.send(400, "text/plain", "400: Invalid Request");  // The request is invalid, so send HTTP status 400
     return;
   }
   ssid_wifi = String(server.arg("WiFi_SSID"));
@@ -121,11 +133,10 @@ void handleLogin() {                         // If a POST request is made to URI
 
 
   server.send(201, "text/plain", "todo melo");
-
 }
 
 void handleNotFound() {
-  server.send(404, "text/plain", "404: Not found"); // Send HTTP status 404 (Not Found) when there's no handler for the URI in the request
+  server.send(404, "text/plain", "404: Not found");  // Send HTTP status 404 (Not Found) when there's no handler for the URI in the request
 }
 
 void StringToEEPROM(int offset, const String &str) {
@@ -148,41 +159,34 @@ String readStringFromEEPROM(int offset) {
 }
 
 void resetMemory() {
+  pinMode(button, INPUT_PULLUP);
   EEPROM.begin(512);
-  Serial.println();
-  Serial.println("aueires borra la memoria?");
-  Serial.println(digitalRead(button));
-  digitalWrite(led, HIGH);
-  delay(1000);
+  Serial.println("quiere borrar la memoria?");
+  delay(500);
+  Serial.println("presiona el boton si si");
+  delay(3000);
+  Serial.println("estado del boton " + String(digitalRead(button)));
 
-  if (digitalRead(button) == LOW) {
-    delay(3000);
-    Serial.println("SI, ha bueno ;)");
+  if (digitalRead(button) != LOW) {
 
-    if (digitalRead(button) == LOW) {
-      Serial.println("Se esta borrando ");
-      for (int i = 0; i < 512; i++) {
-        EEPROM.write(i, 0);
-      }
-      digitalWrite(led, HIGH);
-      delay(100);
-      digitalWrite(led, LOW);
-      delay(100);
-      digitalWrite(led, HIGH);
-      delay(100);
-      digitalWrite(led, LOW);
-      //EEPROM.end();
-
-      Serial.println("Se borro la memoria con exito ");
-      Serial.println(EEPROM.commit());
-      delay(5000);
-      //      for (int i = 0; i < 512; i++) {
-      //
-      //        Serial.println(EEPROM.read(i));
-      //      }
-
+    Serial.println("Si, ha bueno ;)");
+    Serial.println("Se esta borrando... ");
+    for (int i = 0; i < 512; i++) {
+      EEPROM.write(i, 0);
+      Serial.print(".");
     }
-  }
-  //EEPROM.end();
+    digitalWrite(led, HIGH);
+    delay(100);
+    digitalWrite(led, LOW);
+    delay(100);
+    digitalWrite(led, HIGH);
+    delay(100);
+    digitalWrite(led, LOW);
+    //EEPROM.end();
 
+    Serial.println("Se borro la memoria con exito ");
+    Serial.println(EEPROM.commit());
+    delay(5000);
+  }
+  EEPROM.end();
 }
