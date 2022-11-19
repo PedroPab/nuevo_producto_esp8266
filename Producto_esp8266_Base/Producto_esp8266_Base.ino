@@ -42,7 +42,7 @@ void setup() {
 
   //establecmos las peticiones como en express
   server.on("/", []() {
-    server.send(200, "text/plain", "Hola mundo!!");
+    server.send(200, "text/html", "<h1>hola la servidor de tu producto</h1><p><a href=\"/login\">precioname para ir a mandar los datas del wifi al que te quieres conectar :)</a></p>");
   });
   server.on("/hola", HTTP_GET, handleRoot);     //el formulario para  ingresar datos, el tercer parametro es la funcino que se ejecutara al ingresar a esa direccion
   server.on("/login", HTTP_POST, handleLogin);  //se manda el formulario con ayuda del navegador y html a esta direccion
