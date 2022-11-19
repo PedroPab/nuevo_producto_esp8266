@@ -48,9 +48,10 @@ void setup() {
   server.on("/login", HTTP_POST, handleLogin);  //se manda el formulario con ayuda del navegador y html a esta direccion
 
   server.begin();  //iniciamos el servidor
+  connectWifi();
 }
 
-void loop() {
+void connectWifi() {  //cuando termine esta funcio se hira al loop, pero si no se conecta se llamara a si misma
 
   EEPROM.begin(512);
 
@@ -85,7 +86,7 @@ void loop() {
       if (contadorIntentos > millis() + tiempo_espera) {
         Serial.print("tiempo maximo transcurrido");
 
-        return ;
+        return connectWifi();
       }
     }
 
@@ -95,51 +96,44 @@ void loop() {
     Serial.println("");
     Serial.print("STA dirección IP: ");
     Serial.println(WiFi.localIP());
-        Serial.print("podemos ejecutar fuciones para nuestro producto");
+    Serial.print("podemos ejecutar fuciones para nuestro producto");
 
     delay(5000);
     return;
   }
+}
 
-
-
-  delay(1000);
+void loop() {//producto o servicio a ejecutar
 }
 
 void handleRoot() {  // When URI / is requested, send a web page with a button to toggle the LED
   server.send(200, "text/html", "<form action=\"/login\" method=\"POST\"><input type=\"text\" name=\"WiFi_SSID\" placeholder=\"Username\"></br><input type=\"password\" name=\"password\" placeholder=\"Password\"></br><input type=\"submit\" value=\"Login\"></form><p>Try 'John Doe' and 'password123' ...</p>");
 }
 
-void handleLogin() {  // If a POST request is made to URI /login
-  if (!server.hasArg("WiFi_SSID") || !server.hasArg("password")
-      || server.arg("WiFi_SSID") == NULL) {                  // If the POST request doesn't have WiFi_SSID and password data
-    server.send(400, "text/plain", "400: Invalid Request");  // The request is invalid, so send HTTP status 400
+void handleLogin() {                                             // If a POST request is made to URI /login
+  if (!server.hasArg("WiFi_SSID") || !server.hasArg("password")  //toma el los name del formulario y mira si tienen algo , server.hasArg se traduce como tinene argumentos
+      || server.arg("WiFi_SSID") == NULL) {                      // If the POST request doesn't have WiFi_SSID and password data
+    server.send(400, "text/plain", "400: Invalid Request");      // The request is invalid, so send HTTP status 400
     return;
   }
+
+  //guardamos el los datos en la variables
   ssid_wifi = String(server.arg("WiFi_SSID"));
   password_wifi = String(server.arg("password"));
 
+  //guardamos el nombre y la contraseña en la EEPROM
   StringToEEPROM(0, ssid_wifi);
   StringToEEPROM(255, password_wifi);
 
-
-  //  if (EEPROM.commit()) {
-  //    Serial.println("datos guardados");
-  //  } else {
-  //    Serial.println("error en la memoria, no se pudo guardar los datos");
-  //
-  //  }
-
-
-
   server.send(201, "text/plain", "todo melo");
+  EEPROM.end();
 }
 
 void handleNotFound() {
   server.send(404, "text/plain", "404: Not found");  // Send HTTP status 404 (Not Found) when there's no handler for the URI in the request
 }
 
-void StringToEEPROM(int offset, const String &str) {
+void StringToEEPROM(int offset, const String &str) {  //esta funcion la saque de internet y es muy util, me ayuda a leer y escribir string del la memoria EEPROM
   byte len = str.length();
   EEPROM.write(offset, len);
   for (int i = 0; i < len; i++) {
@@ -182,7 +176,7 @@ void resetMemory() {
     digitalWrite(led, HIGH);
     delay(100);
     digitalWrite(led, LOW);
-    //EEPROM.end();
+
 
     Serial.println("Se borro la memoria con exito ");
     Serial.println(EEPROM.commit());
