@@ -42,7 +42,7 @@ void setup() {
 
   //establecmos las peticiones como en express
   server.on("/", []() {
-    server.send(200, "text/html", "<h1>hola la servidor de tu producto</h1><p><a href=\"/login\">precioname para ir a mandar los datas del wifi al que te quieres conectar :)</a></p>");
+    server.send(200, "text/html", "<h1>hola la servidor de tu producto</h1><p><a href=\"/hola\">precioname para ir a mandar los datas del wifi al que te quieres conectar :)</a></p>");
   });
   server.on("/hola", HTTP_GET, handleRoot);     //el formulario para  ingresar datos, el tercer parametro es la funcino que se ejecutara al ingresar a esa direccion
   server.on("/login", HTTP_POST, handleLogin);  //se manda el formulario con ayuda del navegador y html a esta direccion
@@ -101,6 +101,7 @@ void connectWifi() {  //cuando termine esta funcio se hira al loop, pero si no s
     delay(5000);
     return;
   }
+  return connectWifi();
 }
 
 void loop() {//producto o servicio a ejecutar
@@ -113,7 +114,7 @@ void handleRoot() {  // When URI / is requested, send a web page with a button t
 void handleLogin() {                                             // If a POST request is made to URI /login
   if (!server.hasArg("WiFi_SSID") || !server.hasArg("password")  //toma el los name del formulario y mira si tienen algo , server.hasArg se traduce como tinene argumentos
       || server.arg("WiFi_SSID") == NULL) {                      // If the POST request doesn't have WiFi_SSID and password data
-    server.send(400, "text/plain", "400: Invalid Request");      // The request is invalid, so send HTTP status 400
+    server.send(400, "text/plain", "400: Invalid Request. Porfavor mande un nombre y contraseña");      // The request is invalid, so send HTTP status 400
     return;
   }
 
@@ -125,8 +126,9 @@ void handleLogin() {                                             // If a POST re
   StringToEEPROM(0, ssid_wifi);
   StringToEEPROM(255, password_wifi);
 
-  server.send(201, "text/plain", "todo melo");
+  server.send(201, "text/plain", "la informacion fue mandada correctamenre :)");
   EEPROM.end();
+  delay(8000);//retraso para poser mandar el mensaje de confirmacion
 }
 
 void handleNotFound() {
@@ -161,7 +163,7 @@ void resetMemory() {
   delay(3000);
   Serial.println("estado del boton " + String(digitalRead(button)));
 
-  if (digitalRead(button) != LOW) {
+  if (digitalRead(button) == LOW) {
 
     Serial.println("Si, ha bueno ;)");
     Serial.println("Se esta borrando... ");
