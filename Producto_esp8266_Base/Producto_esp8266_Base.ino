@@ -4,7 +4,6 @@
 
 #include <EEPROM.h>
 
-#define button D4
 #define led LED_BUILTIN
 
 //Es el nombre y la contraseña de la nueva red Wifi
@@ -52,11 +51,6 @@ void setup() {
   server.on("/login", HTTP_POST, handleLogin);  //se manda el formulario con ayuda del navegador y html a esta direccion
 
   server.begin();  //iniciamos el servidor
-  connectWifi();
-}
-
-void connectWifi() {  //cuando termine esta funcio se hira al loop, pero si no se conecta se llamara a si misma
-
   EEPROM.begin(512);
 
   Serial.println("{------");
@@ -70,11 +64,29 @@ void connectWifi() {  //cuando termine esta funcio se hira al loop, pero si no s
 
   Serial.println("-------}");
 
+  connectWifi();
+}
+
+void connectWifi() {  //cuando termine esta funcio se hira al loop, pero si no se conecta se llamara a si misma
+
+
   if (ssid_eeprom == "") {
     server.handleClient();  //escucha las solicitudes http de los clientes
     Serial.println(" Credenciales  no guardadas");
 
   } else {
+
+    Serial.println("{------");
+    Serial.println();
+
+    //ssid_eeprom = readStringFromEEPROM(0);
+    //password_eeprom = readStringFromEEPROM(255);
+
+    Serial.println(ssid_eeprom);
+    Serial.println(password_eeprom);
+
+    Serial.println("-------}");
+
 
     Serial.println("punto de acceso apagada");
     WiFi.softAPdisconnect();  //apagamos el punto de acceso
@@ -109,7 +121,7 @@ void connectWifi() {  //cuando termine esta funcio se hira al loop, pero si no s
 }
 
 void loop() {  //producto o servicio a ejecutar
-/// codigo
+  /// codigo
 }
 
 void handleRoot() {  // When URI / is requested, send a web page with a button to toggle the LED
@@ -130,6 +142,11 @@ void handleLogin() {                                                            
   //guardamos el nombre y la contraseña en la EEPROM
   StringToEEPROM(0, ssid_wifi);
   StringToEEPROM(255, password_wifi);
+
+  //los guardamos en las varibles locales
+  ssid_eeprom = ssid_wifi;
+  password_eeprom = password_wifi;
+
 
   server.send(201, "text/plain", "la informacion fue mandada correctamenre :)");
   EEPROM.end();
@@ -160,15 +177,26 @@ String readStringFromEEPROM(int offset) {
 }
 
 void resetMemory() {
-  pinMode(button, INPUT_PULLUP);
   EEPROM.begin(512);
-  Serial.println("quiere borrar la memoria?");
-  delay(500);
-  Serial.println("presiona el boton si si");
-  delay(3000);
-  Serial.println("estado del boton " + String(digitalRead(button)));
+  boolean encendido = EEPROM.read(250);
 
-  if (digitalRead(button) == LOW) {
+  Serial.println("hola");
+  Serial.println("hola");
+
+  Serial.println(EEPROM.read(250));
+  if (!encendido) {
+    EEPROM.write(250, true);
+    EEPROM.commit();
+    Serial.println("quiere borrar la memoria?");
+    delay(500);
+
+    Serial.println("presiona el boton el boton de reset o desconecte la alimentacion ahora si si");
+    delay(3000);
+    EEPROM.write(250, false);
+    EEPROM.commit();
+  }
+
+  if (encendido) {
 
     Serial.println("Si, ha bueno ;)");
     Serial.println("Se esta borrando... ");
